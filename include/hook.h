@@ -1,7 +1,6 @@
 #ifndef HOOK_H_
 #define HOOK_H_
 
-void *na_malloc(size_t size);
 void na_free(void *ptr);
 void *na_realloc(void *ptr, size_t size);
 void *na_calloc(size_t nmemb, size_t size);

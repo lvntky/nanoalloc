@@ -21,7 +21,7 @@
 #define NA_EXTERN extern
 #endif
 
-NA_EXTERN void *na_malloc(size_t __size) __attribute_malloc__
+NA_EXTERN void *na_alloc(size_t __size) __attribute_malloc__
 	__attribute_alloc_size__((1)) __wur;
 
 #endif //_NANOALLOC_H

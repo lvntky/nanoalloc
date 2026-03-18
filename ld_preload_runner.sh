@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # default .so path
-LIB_PATH="$SCRIPT_DIR/build/libna_alloc.so"
+LIB_PATH="$SCRIPT_DIR/build/libnanoalloc.so"
 
 # check if .so exists
 if [[ ! -f "$LIB_PATH" ]]; then

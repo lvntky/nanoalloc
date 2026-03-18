@@ -1,2 +1,27 @@
+# Build output
 build/
-tests/test_*.c
+
+# Object files
+*.o
+*.a
+*.so
+*.so.*
+
+# Debug / profiling
+*.dSYM/
+*.su
+
+# Test binaries
+tests/main
+tests/*.out
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

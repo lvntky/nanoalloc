@@ -24,4 +24,6 @@
 NA_EXTERN void *na_alloc(size_t __size) __attribute_malloc__
 	__attribute_alloc_size__((1)) __wur;
 
+NA_EXTERN void na_free(void *__ptr);
+
 #endif //_NANOALLOC_H

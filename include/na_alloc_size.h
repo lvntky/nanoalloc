@@ -29,5 +29,6 @@
 /* Size of the internal size type (word size) */
 #define NA_SIZE_SZ (sizeof(INTERNAL_SIZE_T))
 
+#define NA_DEFAULT_ALIGN_SIZE 16
 
 #endif /* NA_ALLOC_SIZE_H */

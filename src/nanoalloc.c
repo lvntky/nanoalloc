@@ -10,9 +10,12 @@
 #include <stdio.h>
 #endif
 
+#define _NA_ALIGNG(req, align) (((req) + (align) - 1) & ~((align) - 1))
+
 /**
  * A global mutex to rule them all
  */
+/** @todo per-thread cache ? maybe later. */
 static pthread_mutex_t _na_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
@@ -38,8 +41,9 @@ static struct na_chunk *nachunkptr;
 
 static void *__sys_mmap(size_t __size)
 {
-	//size_t real_size = align(__size);
-	void *address = mmap(NULL, __size, PROT_READ | PROT_WRITE,
+	size_t ns = _NA_ALIGNG(__size, NA_DEFAULT_ALIGN_SIZE);
+
+	void *address = mmap(NULL, ns, PROT_READ | PROT_WRITE,
 			     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	if (address == MAP_FAILED) {
@@ -50,19 +54,36 @@ static void *__sys_mmap(size_t __size)
 	} else {
 #if NA_DEBUG
 		fprintf(stderr, "__sys_mmap is not failed.");
+		fprintf(stderr, "normalized size: %ld", ns);
+
 #endif
 	}
 
 	return address;
 }
 
-void *na_alloc(size_t __size)
+/**
+ * @brief This is the internal implementation of na_malloc
+ *
+ * Both malloc and na_alloc functions are calling _int_na_alloc
+ */
+static void *_int_na_alloc(size_t __size)
 {
 	NA_SUPRESS_UNUSED(nachunkptr);
 	NA_SUPRESS_UNUSED(_na_mutex);
 
 	if (__size == 0)
 		return NULL;
+
+	/** @todo lock the function with global mutex,
+	 it's necessary for searching on placing on free list
+	if the available space not found on free list, than call mmap
+	since it's thread safe no need to lock
+	*/
+
+	pthread_mutex_lock(&_na_mutex);
+	// search on free list
+	pthread_mutex_unlock(&_na_mutex);
 
 	void *returned = __sys_mmap(__size);
 
@@ -72,9 +93,26 @@ void *na_alloc(size_t __size)
 	return returned;
 }
 
-NA_EXTERN void na_free(void *ptr)
+void *na_alloc(size_t __size)
 {
-	NA_SUPRESS_UNUSED(ptr);
+	return _int_na_alloc(__size);
+}
+
+void _int_na_free(void *ptr)
+{
+	if (ptr == NULL)
+		return;
+
+	/** @todo the list is critical and should not accessible while free-in by malloc or etc */
+	pthread_mutex_lock(&_na_mutex);
+	// free the chunk
+	// coalesce
+	pthread_mutex_unlock(&_na_mutex);
+}
+
+void na_free(void *ptr)
+{
+	_int_na_free(ptr);
 }
 
 /**
@@ -85,10 +123,10 @@ NA_EXTERN void na_free(void *ptr)
 
 void *malloc(size_t size)
 {
-	return na_alloc(size);
+	return _int_na_alloc(size);
 }
 
 void free(void *ptr)
 {
-	return na_free(ptr);
+	_int_na_free(ptr);
 }

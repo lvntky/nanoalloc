@@ -54,7 +54,7 @@ static void *__sys_mmap(size_t __size)
 	} else {
 #if NA_DEBUG
 		fprintf(stderr, "__sys_mmap is not failed.");
-		fprintf(stderr, "normalized size: %ld", ns);
+		fprintf(stderr, "normalized size: %zu", ns);
 
 #endif
 	}

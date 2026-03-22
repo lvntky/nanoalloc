@@ -1,3 +1,4 @@
+#define NA_PREFIX 1
 #include <nanoalloc.h>
 #include <na_alloc_size.h>
 #include <assert.h>
@@ -22,7 +23,7 @@ static pthread_mutex_t _na_mutex = PTHREAD_MUTEX_INITIALIZER;
  * represents the minimum allocatable space
  * consists meta-data and user data
  */
-typedef struct na_chunk {
+struct na_chunk {
 	INTERNAL_SIZE_T chunk_prev_size;
 	INTERNAL_SIZE_T size;
 
@@ -43,12 +44,12 @@ static void *__sys_mmap(size_t __size)
 
 	if (address == MAP_FAILED) {
 #if NA_DEBUG
-		fprintf(stdout, "__sys_mmap failed.");
+		fprintf(stderr, "__sys_mmap failed.");
 #endif
 		return NULL;
 	} else {
 #if NA_DEBUG
-		fprintf(stdout, "__sys_mmap is not failed.");
+		fprintf(stderr, "__sys_mmap is not failed.");
 #endif
 	}
 
@@ -57,7 +58,37 @@ static void *__sys_mmap(size_t __size)
 
 void *na_alloc(size_t __size)
 {
+	NA_SUPRESS_UNUSED(nachunkptr);
+	NA_SUPRESS_UNUSED(_na_mutex);
+
 	if (__size == 0)
 		return NULL;
-	return __sys_mmap(__size);
+
+	void *returned = __sys_mmap(__size);
+
+#if NA_DEBUG
+	fprintf(stderr, "[nanoalloc] RUNNED!");
+#endif
+	return returned;
+}
+
+NA_EXTERN void na_free(void *ptr)
+{
+	NA_SUPRESS_UNUSED(ptr);
+}
+
+/**
+ * @brief Overwrite functions
+ *
+ * Used for LD_PRELOAD
+ */
+
+void *malloc(size_t size)
+{
+	return na_alloc(size);
+}
+
+void free(void *ptr)
+{
+	return na_free(ptr);
 }

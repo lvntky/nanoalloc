@@ -12,4 +12,6 @@
 #define __STR_HELPER(x) #x
 #define __STR(x) __STR_HELPER(x)
 
+#define NA_SUPRESS_UNUSED(x) (void)(x)
+
 #endif //_UTIL_H

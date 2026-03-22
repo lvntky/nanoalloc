@@ -44,8 +44,11 @@ $(BUILDDIR):
 $(LIB_NANO): $(NANO_SRC) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
-$(LIB_HOOK): $(HOOK_SRC) | $(BUILDDIR)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+$(LIB_HOOK): $(HOOK_SRC) $(LIB_NANO) | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< \
+		-L$(BUILDDIR) -lnanoalloc \
+		-Wl,-rpath,'$$ORIGIN' \
+		-ldl
 
 # --------------------------------------------------------------------------
 .PHONY: clean

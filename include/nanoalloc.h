@@ -26,4 +26,11 @@ NA_EXTERN void *na_alloc(size_t __size) __attribute_malloc__
 
 NA_EXTERN void na_free(void *__ptr);
 
+NA_EXTERN void *na_realloc(void *__ptr,
+			   size_t __size) __attribute_warn_unused_result__
+	__attribute_alloc_size__((2));
+
+NA_EXTERN void *na_calloc(size_t __nmemb, size_t __size) __attribute_malloc__
+	__attribute_alloc_size__((1, 2)) __wur;
+
 #endif //_NANOALLOC_H

@@ -1,3 +1,6 @@
+.gdbinit
+test/.gdbinit
+
 # Build output
 build/
 

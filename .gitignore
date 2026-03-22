@@ -24,6 +24,7 @@ tests/*.out
 *.swp
 *.swo
 *~
+TAGS
 
 # OS
 .DS_Store

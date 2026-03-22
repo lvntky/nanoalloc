@@ -3,24 +3,6 @@
 
 LICENSE,0
 
-Makefile,687
-CC       := clangCC5,183
-SRCDIR   := srcSRCDIR6,201
-INCDIR   := includeINCDIR7,217
-BUILDDIR := buildBUILDDIR8,237
-CFLAGS := -Wall -Wextra -Wpedantic -std=c11 -O2 -g \CFLAGS10,256
-LDFLAGS := -shared -ldl -pthreadLDFLAGS14,395
-NANO_SRC := $(SRCDIR)/nanoalloc.cNANO_SRC17,439
-HOOK_SRC := $(SRCDIR)/hook/hook.cHOOK_SRC18,473
-LIB_NANO := $(BUILDDIR)/libnanoalloc.soLIB_NANO21,518
-LIB_HOOK := $(BUILDDIR)/libna_hook.soLIB_HOOK22,558
-all: $(BUILDDIR) $(LIB_NANO) $(LIB_HOOK)all27,687
-$(BUILDDIR):$(BUILDDIR)32,848
-$(LIB_NANO): $(NANO_SRC) | $(BUILDDIR)$(LIB_NANO)36,896
-$(LIB_HOOK): $(HOOK_SRC) | $(BUILDDIR)$(LIB_HOOK)40,996
-clean:clean46,1165
-help:help50,1208
-
 README.md,156
 # nanoallocnanoalloc1,0
 ## The HookThe Hook9,836
@@ -44,62 +26,97 @@ include/na_version.h,175
 #define PATCH_VERSION PATCH_VERSION12,182
 #define _NA_VERSION_H_NA_VERSION_H15,229
 
-include/nanoalloc.h,114
-#define _NANOALLOC_H _NANOALLOC_H12,166
-#define NA_EXTERN NA_EXTERN19,272
-#define NA_EXTERN NA_EXTERN21,318
+include/nanoalloc.h,655
+#define NANOALLOC_HNANOALLOC_H9,136
+#  define NA_EXTERN NA_EXTERN17,438
+#  define NA_EXTERN NA_EXTERN19,486
+#  define NA_ATTR_MALLOC NA_ATTR_MALLOC26,786
+#  define NA_ATTR_ALLOC_SIZE1 NA_ATTR_ALLOC_SIZE127,846
+#  define NA_ATTR_ALLOC_SIZE_2 NA_ATTR_ALLOC_SIZE_228,913
+#  define NA_ATTR_ALLOC_SIZE1_2 NA_ATTR_ALLOC_SIZE1_229,980
+#  define NA_ATTR_WUR NA_ATTR_WUR30,1050
+#  define NA_ATTR_MALLOCNA_ATTR_MALLOC32,1128
+#  define NA_ATTR_ALLOC_SIZE1NA_ATTR_ALLOC_SIZE133,1153
+#  define NA_ATTR_ALLOC_SIZE_2NA_ATTR_ALLOC_SIZE_234,1183
+#  define NA_ATTR_ALLOC_SIZE1_2NA_ATTR_ALLOC_SIZE1_235,1214
+#  define NA_ATTR_WURNA_ATTR_WUR36,1246
 
-include/util.h,135
+include/util.h,187
 #define _UTIL_H _UTIL_H2,16
 #define _TODO(_TODO6,56
 #define __STR_HELPER(__STR_HELPER12,162
 #define __STR(x) __STR___STR13,189
+#define NA_SUPRESS_UNUSED(NA_SUPRESS_UNUSED15,223
 
 ld_preload_runner.sh,0
 
-src/nanoalloc.c,373
-static pthread_mutex_t _na_mutex = PTHREAD_MUTEX_INITIALIZER;_na_mutex10,153
-typedef struct na_chunk {na_chunk21,408
-	INTERNAL_SIZE_T na_chunk_size;na_chunk_size22,434
-	INTERNAL_SIZE_T size;size23,466
-	struct na_chunk *fc;fc26,569
-	struct na_chunk *bc;bc28,670
-static struct na_chunk *nachunkptr;nachunkptr32,727
-void *na_alloc(size_t __size)na_alloc34,764
+src/nanoalloc.c,585
+#define NA_PREFIX NA_PREFIX1,0
+static pthread_mutex_t _na_mutex = PTHREAD_MUTEX_INITIALIZER;_na_mutex16,235
+struct na_chunk {na_chunk26,489
+	INTERNAL_SIZE_T chunk_prev_size;chunk_prev_size27,507
+	INTERNAL_SIZE_T size;size28,541
+	struct na_chunk *fc;fc31,644
+	struct na_chunk *bc;bc33,745
+static struct na_chunk *nachunkptr;nachunkptr37,802
+static void *__sys_mmap(size_t __size)__sys_mmap39,839
+void *na_alloc(size_t __size)na_alloc59,1231
+NA_EXTERN void na_free(void *ptr)na_free75,1482
+void *malloc(size_t size)malloc86,1611
+void free(void *ptr)free91,1666
 
-src/hook/hook.c,1225
-#define _GNU_SOURCE_GNU_SOURCE2,1
-typedef void *(*malloc_fn)(size_t);malloc_fn9,130
-typedef void (*free_fn)(void *);free_fn10,166
-typedef void *(*calloc_fn)(size_t, size_t);calloc_fn11,199
-typedef void *(*realloc_fn)(void *, size_t);realloc_fn12,243
-static malloc_fn real_malloc = NULL;real_malloc15,315
-static free_fn real_free = NULL;real_free16,352
-static calloc_fn real_calloc = NULL;real_calloc17,385
-static realloc_fn real_realloc = NULL;real_realloc18,422
-static malloc_fn custom_malloc = NULL;custom_malloc21,495
-static free_fn custom_free = NULL;custom_free22,534
-static calloc_fn custom_calloc = NULL;custom_calloc23,569
-static realloc_fn custom_realloc = NULL;custom_realloc24,608
-static pthread_once_t init_once = PTHREAD_ONCE_INIT;init_once27,669
-static __thread int in_init = 0;in_init30,759
-static void load_real(void) {load_real33,822
-static void load_custom(void) {load_custom41,1115
-static void init(void) {init54,1543
-static inline void ensure_init(void) {ensure_init64,1665
-void *malloc(size_t size) {malloc75,1903
-void free(void *ptr) {free84,2051
-void *calloc(size_t nmemb, size_t size) {calloc94,2188
-void *realloc(void *ptr, size_t size) {realloc103,2364
+src/hook/hook.c,1190
+#define _GNU_SOURCE_GNU_SOURCE1,0
+#define NA_PREFIX NA_PREFIX3,21
+typedef void *(*malloc_fn)(size_t);malloc_fn18,443
+typedef void  (*free_fn)(void *);free_fn19,479
+typedef void *(*calloc_fn)(size_t, size_t);calloc_fn20,513
+typedef void *(*realloc_fn)(void *, size_t);realloc_fn21,557
+#define BOOTSTRAP_SIZE BOOTSTRAP_SIZE26,824
+static char   _bootstrap_buf[BOOTSTRAP_SIZE]; /* BSS → zaten sıfır   */_bootstrap_buf27,853
+static size_t _bootstrap_used = 0;_bootstrap_used28,929
+static inline int _is_bootstrap(const void *ptr)_is_bootstrap30,965
+static malloc_fn  real_malloc  = NULL;real_malloc39,1329
+static free_fn    real_free    = NULL;real_free40,1368
+static calloc_fn  real_calloc  = NULL;real_calloc41,1407
+static realloc_fn real_realloc = NULL;real_realloc42,1446
+static atomic_int _init_done = 0;_init_done47,1707
+static atomic_int _in_init   = 0;_in_init48,1741
+static void _init(void)_init50,1776
+static inline void _ensure_init(void)_ensure_init65,2248
+void *malloc(size_t size)malloc74,2585
+void free(void *ptr)free92,3096
+void *calloc(size_t nmemb, size_t size)calloc109,3547
+void *realloc(void *ptr, size_t size)realloc134,4350
 
 tests/main.c,43
-int main(int argc, char *argv[])main3,24
+int main(int argc, char *argv[])main5,63
 
-tests/xc,0
-
-tests/main,0
+tests/.gdbinit,0
 
 CODE_OF_CONDUCT.md,0
+
+.gdbinit,0
+
+Makefile,799
+CC       := clangCC4,182
+SRCDIR   := srcSRCDIR5,200
+INCDIR   := includeINCDIR6,216
+BUILDDIR := buildBUILDDIR7,236
+MODE ?= releaseMODE10,274
+  CFLAGS := -Wall -Wextra -Wpedantic -std=c11 -O0 -g3 \CFLAGS13,313
+  CFLAGS := -Wall -Wextra -Wpedantic -std=c11 -O2 \CFLAGS18,470
+LDFLAGS := -shared -ldl -pthreadLDFLAGS24,645
+NANO_SRC := $(SRCDIR)/nanoalloc.cNANO_SRC27,689
+HOOK_SRC := $(SRCDIR)/hook/hook.cHOOK_SRC28,723
+LIB_NANO := $(BUILDDIR)/libnanoalloc.soLIB_NANO31,768
+LIB_HOOK := $(BUILDDIR)/libna_hook.soLIB_HOOK32,808
+all: $(BUILDDIR) $(LIB_NANO) $(LIB_HOOK)all36,936
+$(BUILDDIR):$(BUILDDIR)41,1107
+$(LIB_NANO): $(NANO_SRC) | $(BUILDDIR)$(LIB_NANO)44,1135
+$(LIB_HOOK): $(HOOK_SRC) $(LIB_NANO) | $(BUILDDIR)$(LIB_HOOK)47,1212
+clean:clean55,1457
+help:help59,1500
 
 TAGS,0
 

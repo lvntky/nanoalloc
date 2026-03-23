@@ -10,12 +10,18 @@
 #include <stdio.h>
 #endif
 
+/* Forward declarations*/
+typedef struct na_chunk na_chunk;
+static void *__sys_mmap(size_t __size);
+
 #define _NA_ALIGNG(req, align) (((req) + (align) - 1) & ~((align) - 1))
+#define NA_MEM2CHUNK(ptr) ((na_chunk *)((char *)(ptr) - NA_SIZE_SZ * 2))
+#define NA_CHUNK2MEM(chnk) ((void *)((char *)(chnk) + NA_SIZE_SZ * 2))
 
 /**
  * A global mutex to rule them all
  */
-/** @todo per-thread cache ? maybe later. */
+/** @todo per-thread cache(tcache) ? maybe later. */
 static pthread_mutex_t _na_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
@@ -38,6 +44,29 @@ struct na_chunk {
 
 /*Global sentinel of chunks */
 static struct na_chunk *nachunkptr;
+
+static void _na_init(void)
+{
+	nachunkptr = __sys_mmap(sizeof(struct na_chunk));
+	assert(nachunkptr != NULL);
+
+	nachunkptr->size = 0;
+	nachunkptr->chunk_prev_size = 0;
+
+	// circular list
+	nachunkptr->fc = nachunkptr;
+	nachunkptr->bc = nachunkptr;
+}
+
+static int _is_na_initialized = 0;
+
+static void _na_init_lazy(void)
+{
+	if (!_is_na_initialized) {
+		_na_init();
+		_is_na_initialized = 1;
+	}
+}
 
 static void *__sys_mmap(size_t __size)
 {
@@ -70,10 +99,12 @@ static void *__sys_mmap(size_t __size)
 static void *_int_na_alloc(size_t __size)
 {
 	NA_SUPRESS_UNUSED(nachunkptr);
-	NA_SUPRESS_UNUSED(_na_mutex);
+	void *some_adress = NA_CHUNK2MEM(nachunkptr);
 
 	if (__size == 0)
 		return NULL;
+
+	_na_init_lazy();
 
 	/** @todo lock the function with global mutex,
 	 it's necessary for searching on placing on free list
@@ -102,6 +133,8 @@ void _int_na_free(void *ptr)
 {
 	if (ptr == NULL)
 		return;
+
+	struct na_chunk *to_be_free = NA_MEM2CHUNK(ptr);
 
 	/** @todo the list is critical and should not accessible while free-in by malloc or etc */
 	pthread_mutex_lock(&_na_mutex);

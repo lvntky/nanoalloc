@@ -12,5 +12,5 @@ test2: test2.c
 	$(CC) $(CFLAGS) test2.c -o test2.out $(LDFLAGS)
 
 clean:
-	rm -rf test1
-	rm -rf test2
+	rm -rf test1.out
+	rm -rf test2.out

@@ -1,16 +1,14 @@
 /**
- * @file na_alloc_size.h
+ * @file na_alloc_config.h
  * @author Levent Kaya
- * @brief Internal size abstraction for nanoalloc
+ * @brief General/mostly configurable fields of na_alloc
  * @version 0.1.0
  * @date 2026-03-18
  *
- * Inspired by glibc's INTERNAL_SIZE_T concept,
- * but simplified and made portable.
  */
 
-#ifndef NA_ALLOC_SIZE_H
-#define NA_ALLOC_SIZE_H
+#ifndef NA_ALLOC_CONFIG_H
+#define NA_ALLOC_CONFIG_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -31,4 +29,4 @@
 
 #define NA_DEFAULT_ALIGN_SIZE 16
 
-#endif /* NA_ALLOC_SIZE_H */
+#endif /* NA_ALLOC_CONFIG_H */

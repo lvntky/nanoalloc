@@ -5,6 +5,7 @@
 #include <util.h>
 #include <pthread.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #if NA_DEBUG
 #include <stdio.h>
@@ -23,16 +24,23 @@ static na_chunk *free_list_traverse(size_t __size);
 #define NA_IS_CHUNK_INUSE(c) ((c)->size & NA_CHUNK_SET_INUSE_BIT)
 #define NA_IS_CHUNK_FREE(c) (!NA_IS_CHUNK_INUSE(c))
 
+// Add a helper macro to always get true size
+#define NA_CHUNK_TRUE_SIZE(c) \
+	((c)->size & ~(INTERNAL_SIZE_T)NA_CHUNK_SET_INUSE_BIT)
+
 #define NA_SECURE_SENTINEL(c)              \
 	do {                               \
 		assert((c) != nachunkptr); \
 	} while (0);
+
+#define NA_CHUNK_MAGIC 0xDEADC0DEDEADC0DEULL
 
 /**
  * A global mutex to rule them all
  */
 /** @todo per-thread cache(tcache) ? maybe later. */
 static pthread_mutex_t _na_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int _is_na_initialized = 0;
 
 /**
  * @class na_chunk
@@ -46,6 +54,7 @@ struct na_chunk {
 	/** @todo commented out for simplicty, needinf physical andress
 	 *manupulation. will be added since glibc has it :) */
 	//INTERNAL_SIZE_T chunk_prev_size;
+	INTERNAL_SIZE_T magic;
 	INTERNAL_SIZE_T size;
 
 	/* @param fc doubly linked-list, forward pointer to the next chunk on list */
@@ -75,6 +84,7 @@ static void _na_init(void)
 	// circular list
 	nachunkptr->fc = nachunkptr;
 	nachunkptr->bc = nachunkptr;
+	_is_na_initialized = 1;
 
 #if NA_DEBUG
 	fprintf(stderr, "sizeof(INTERNAL_SIZE_T) = %zu\n",
@@ -92,16 +102,16 @@ static void _na_init(void)
 #endif
 }
 
-static int _is_na_initialized = 0;
+static pthread_once_t _na_once = PTHREAD_ONCE_INIT;
+
+static void _na_init_once(void)
+{
+	_na_init();
+}
 
 static void _na_init_lazy(void)
 {
-	pthread_mutex_lock(&_na_mutex);
-	if (!_is_na_initialized) {
-		_na_init();
-		_is_na_initialized = 1;
-	}
-	pthread_mutex_unlock(&_na_mutex);
+	pthread_once(&_na_once, _na_init_once);
 }
 
 static void *__sys_mmap(size_t __size)
@@ -171,6 +181,7 @@ static void *_int_na_alloc(size_t __size)
 		} else {
 			candidate->size = total_size;
 			//			candidate->chunk_prev_size = 0;
+			candidate->magic = NA_CHUNK_MAGIC;
 			candidate->fc = nachunkptr;
 			candidate->bc = nachunkptr->bc;
 
@@ -230,7 +241,7 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 
 	// Merge with next chunk if free
 	if (next != nachunkptr && NA_IS_CHUNK_FREE(next)) {
-		candidate->size += next->size;
+		candidate->size += NA_CHUNK_TRUE_SIZE(next);
 		candidate->fc = next->fc;
 		next->fc->bc = candidate;
 	}
@@ -238,7 +249,7 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 	// Merge with previous chunk if free
 	na_chunk *prev = candidate->bc;
 	if (prev != nachunkptr && NA_IS_CHUNK_FREE(prev)) {
-		prev->size += candidate->size;
+		prev->size += NA_CHUNK_TRUE_SIZE(candidate);
 		prev->fc = candidate->fc;
 		candidate->fc->bc = prev;
 		candidate = prev;
@@ -249,7 +260,7 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 
 static int _na_return_to_kernel(na_chunk *chnk)
 {
-	return __sys_munmap(chnk, chnk->size);
+	return __sys_munmap(chnk, NA_CHUNK_TRUE_SIZE(chnk));
 }
 
 void _int_na_free(void *ptr)
@@ -257,23 +268,45 @@ void _int_na_free(void *ptr)
 	if (ptr == NULL)
 		return;
 
+#if NA_DEBUG
+	fprintf(stderr, "[nanoalloc] _int_na_free called.\n");
+#endif
+	//	if (!_is_na_initialized)
+	//		return;
+
 	struct na_chunk *candidate = NA_MEM2CHUNK(ptr);
+
+	if (candidate->magic != NA_CHUNK_MAGIC) {
+#if NA_DEBUG
+		fprintf(stderr,
+			"[nanoalloc] free: foreign or corrupt ptr %p, ignoring\n",
+			ptr);
+#endif
+		return;
+	}
+
 	NA_SECURE_SENTINEL(candidate);
 
 	/** @todo the list is critical and should not accessible while free-in by malloc or etc */
 	pthread_mutex_lock(&_na_mutex);
 	// free the chunk
 	NA_MARK_FREED(candidate);
+
+#if NA_DEBUG
+	fprintf(stderr, "[nanoalloc] chunk at: %p freed\n",
+		&candidate);
+#endif
 	// coalesce
 	candidate = _na_coalesce(candidate);
 
-	if (candidate->size >= 64 * 64) {
+	// Commented out, not stable
+	/*
+	if (NA_CHUNK_TRUE_SIZE(candidate) >= 64 * 64) {
 		candidate->bc->fc = candidate->fc;
 		candidate->fc->bc = candidate->bc;
 
-
 		_na_return_to_kernel(candidate);
-	}
+		}*/
 
 	pthread_mutex_unlock(&_na_mutex);
 }
@@ -295,6 +328,21 @@ static void *_int_na_realloc(void *ptr, size_t size)
 	}
 }
 
+static void *_int_na_calloc(size_t nmemb, size_t size)
+{
+	void *addr;
+	size_t req = 0;
+	if (nmemb != 0) {
+		req = nmemb * size;
+		/** @todo over owerflow check may be needed */
+	}
+	addr = _int_na_alloc(req);
+	if (addr != 0)
+		memset(addr, 0, req);
+
+	return addr;
+}
+
 void *na_realloc(void *ptr, size_t size)
 {
 	return _int_na_realloc(ptr, size);
@@ -302,6 +350,7 @@ void *na_realloc(void *ptr, size_t size)
 
 void *na_calloc(size_t nmemb, size_t size)
 {
+	return _int_na_calloc(nmemb, size);
 }
 
 static na_chunk *free_list_traverse(size_t __size)
@@ -309,7 +358,8 @@ static na_chunk *free_list_traverse(size_t __size)
 	na_chunk *_chunk = nachunkptr->fc; // start AFTER sentinel
 
 	while (_chunk != nachunkptr) { // stop when we've gone full circle
-		if (NA_IS_CHUNK_FREE(_chunk) && _chunk->size >= __size)
+		if (NA_IS_CHUNK_FREE(_chunk) &&
+		    NA_CHUNK_TRUE_SIZE(_chunk) >= __size)
 			return _chunk;
 		_chunk = _chunk->fc;
 	}
@@ -336,4 +386,9 @@ void free(void *ptr)
 void *realloc(void *ptr, size_t size)
 {
 	return _int_na_realloc(ptr, size);
+}
+
+void *calloc(size_t nmemb, size_t size)
+{
+	return _int_na_calloc(nmemb, size);
 }

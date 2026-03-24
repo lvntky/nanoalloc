@@ -25,6 +25,7 @@ tests/*.out
 *.swo
 *~
 TAGS
+na_debug.log
 
 # OS
 .DS_Store

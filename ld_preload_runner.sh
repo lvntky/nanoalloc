@@ -26,6 +26,6 @@ export NA_STATS=1
 echo
 echo "Running: LD_PRELOAD=$LIB_PATH $USER_CMD"
 echo "---------------------------------------"
-LD_PRELOAD="$LIB_PATH" $USER_CMD
+LD_PRELOAD="$LIB_PATH" $USER_CMD 2>na_debug.log
 echo "---------------------------------------"
 echo "Done."

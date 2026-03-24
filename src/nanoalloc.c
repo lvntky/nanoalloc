@@ -113,13 +113,12 @@ static void *__sys_mmap(size_t __size)
 
 	if (address == MAP_FAILED) {
 #if NA_DEBUG
-		fprintf(stderr, "__sys_mmap failed.");
+		fprintf(stderr, "!!!__sys_mmap failed!!!\n");
 #endif
 		return NULL;
 	} else {
 #if NA_DEBUG
-		fprintf(stderr, "__sys_mmap is not failed.");
-		fprintf(stderr, "normalized size: %zu", ns);
+		fprintf(stderr, "__sys_mmap is OK.\n");
 
 #endif
 	}
@@ -179,12 +178,18 @@ static void *_int_na_alloc(size_t __size)
 			nachunkptr->bc = candidate;
 		}
 	}
+#if NA_DEBUG
+	else {
+		fprintf(stderr,
+			"[nanoalloc] no mmap needed free space found!\n");
+	}
+#endif
 
 	NA_MARK_INUSE(candidate);
 	pthread_mutex_unlock(&_na_mutex);
 
 #if NA_DEBUG
-	fprintf(stderr, "[nanoalloc] RUNNED!");
+	fprintf(stderr, "[nanoalloc] RUNNED!\n");
 #endif
 	return NA_CHUNK2MEM(candidate);
 }
@@ -218,12 +223,12 @@ static void _na_validate_list(void)
 
 static na_chunk *_na_coalesce(na_chunk *candidate)
 {
-	// Merge with next chunk if free
 	na_chunk *next = candidate->fc;
 #if NA_DEBUG
 	_na_validate_chunk(next);
 #endif
 
+	// Merge with next chunk if free
 	if (next != nachunkptr && NA_IS_CHUNK_FREE(next)) {
 		candidate->size += next->size;
 		candidate->fc = next->fc;
@@ -242,6 +247,11 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 	return candidate;
 }
 
+static int _na_return_to_kernel(na_chunk *chnk)
+{
+	return __sys_munmap(chnk, chnk->size);
+}
+
 void _int_na_free(void *ptr)
 {
 	if (ptr == NULL)
@@ -256,12 +266,42 @@ void _int_na_free(void *ptr)
 	NA_MARK_FREED(candidate);
 	// coalesce
 	candidate = _na_coalesce(candidate);
+
+	if (candidate->size >= 64 * 64) {
+		candidate->bc->fc = candidate->fc;
+		candidate->fc->bc = candidate->bc;
+
+
+		_na_return_to_kernel(candidate);
+	}
+
 	pthread_mutex_unlock(&_na_mutex);
 }
 
 void na_free(void *ptr)
 {
 	_int_na_free(ptr);
+}
+
+static void *_int_na_realloc(void *ptr, size_t size)
+{
+	na_chunk *candidate = NA_MEM2CHUNK(ptr);
+	size_t cnd_size = candidate->size;
+
+	if (size > cnd_size) {
+		// grow
+	} else {
+		// shrink
+	}
+}
+
+void *na_realloc(void *ptr, size_t size)
+{
+	return _int_na_realloc(ptr, size);
+}
+
+void *na_calloc(size_t nmemb, size_t size)
+{
 }
 
 static na_chunk *free_list_traverse(size_t __size)
@@ -291,4 +331,9 @@ void *malloc(size_t size)
 void free(void *ptr)
 {
 	_int_na_free(ptr);
+}
+
+void *realloc(void *ptr, size_t size)
+{
+	return _int_na_realloc(ptr, size);
 }

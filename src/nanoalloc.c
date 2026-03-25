@@ -293,8 +293,7 @@ void _int_na_free(void *ptr)
 	NA_MARK_FREED(candidate);
 
 #if NA_DEBUG
-	fprintf(stderr, "[nanoalloc] chunk at: %p freed\n",
-		&candidate);
+	fprintf(stderr, "[nanoalloc] chunk at: %p freed\n", &candidate);
 #endif
 	// coalesce
 	candidate = _na_coalesce(candidate);
@@ -316,16 +315,50 @@ void na_free(void *ptr)
 	_int_na_free(ptr);
 }
 
+static na_chunk na_copy_stack(na_chunk *real)
+{
+	na_chunk stack_copy;
+
+	stack_copy.bc = real->bc;
+	stack_copy.fc = real->fc;
+	stack_copy.magic = NA_CHUNK_MAGIC;
+	stack_copy.size = NA_CHUNK_TRUE_SIZE(real);
+
+	return stack_copy;
+}
+
 static void *_int_na_realloc(void *ptr, size_t size)
 {
-	na_chunk *candidate = NA_MEM2CHUNK(ptr);
-	size_t cnd_size = candidate->size;
-
-	if (size > cnd_size) {
-		// grow
-	} else {
-		// shrink
+	if (ptr == NULL)
+		return _int_na_alloc(size);
+	if (size == 0) {
+		_int_na_free(ptr);
+		return NULL;
 	}
+
+	na_chunk *candidate = NA_MEM2CHUNK(ptr);
+	size_t cnd_size =
+		NA_CHUNK_TRUE_SIZE(candidate); // fix: strip in-use bit
+
+	if (size == cnd_size)
+		return ptr;
+
+	na_chunk copy = na_copy_stack(candidate); // snapshot before free
+
+	void *raw_address = _int_na_alloc(size);
+	if (raw_address == NULL)
+		return NULL; // original ptr still valid, don't free
+
+	// copy the smaller of the two sizes to avoid overread/overwrite
+	size_t copy_size = size < NA_CHUNK_TRUE_SIZE(&copy) ?
+				   size :
+				   NA_CHUNK_TRUE_SIZE(&copy);
+
+	memcpy(raw_address, ptr, copy_size); // ptr still readable until free
+
+	_int_na_free(ptr); // free AFTER memcpy, not before
+
+	return raw_address;
 }
 
 static void *_int_na_calloc(size_t nmemb, size_t size)

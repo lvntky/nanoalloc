@@ -11,5 +11,6 @@ int main(int argc, char *argv[])
 	int *b = malloc(1024);
 	b[0] = 2;
 
+	b = realloc(b, 4096);
 	return 0;
 }

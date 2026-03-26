@@ -1,0 +1,243 @@
+#+TITLE: nanoalloc – Development Backlog
+#+AUTHOR: nanoalloc team
+#+DATE: 2026-03-27
+#+STARTUP: overview
+#+TODO: TODO IN-PROGRESS BLOCKED | DONE CANCELLED
+#+TAGS: bug(b) perf(p) feature(f) security(s) cleanup(c) docs(d)
+
+* nanoalloc Backlog
+
+** Bugs
+:PROPERTIES:
+:CATEGORY: Bug
+:END:
+
+*** TODO [#A] Coalesce does not strip in-use bit before adding sizes  :bug:
+    :PROPERTIES:
+    :EFFORT: 1h
+    :END:
+    In =_na_coalesce=, =candidate->size += NA_CHUNK_TRUE_SIZE(next)= adds the
+    true size of the neighbour into =candidate->size=, but =candidate->size=
+    still carries its own in-use bit. The accumulated size will therefore be
+    off-by-one. Both additions in the function must use =NA_CHUNK_TRUE_SIZE=
+    on the *destination* chunk as well.
+
+    - [ ] Fix merge-with-next accumulation
+    - [ ] Fix merge-with-prev accumulation
+    - [ ] Add unit test for size integrity after double coalesce
+
+*** TODO [#A] Double-free not detected – magic byte is preserved after free  :bug:security:
+    :PROPERTIES:
+    :EFFORT: 2h
+    :END:
+    =_int_na_free= checks =candidate->magic == NA_CHUNK_MAGIC= but never clears
+    it. A second call with the same pointer passes the guard silently and marks
+    an already-free chunk as freed again, potentially corrupting the list.
+
+    - [ ] Clear magic field (set to 0 or a ~DEAD_MAGIC~) inside =_int_na_free=
+          after the validity check
+    - [ ] Add a ~NA_CHUNK_FREE_MAGIC~ sentinel to distinguish freed vs live
+
+*** TODO [#B] =_int_na_realloc= compares =size= against raw =cnd_size= before alignment  :bug:
+    :PROPERTIES:
+    :EFFORT: 30m
+    :END:
+    The early-return =if (size == cnd_size) return ptr= fires before =size= is
+    aligned, so a request that rounds up to the same bucket is spuriously
+    rejected and a new allocation is done unnecessarily.
+
+    - [ ] Align =size= with =_NA_ALIGNG= before the equality check
+
+*** TODO [#B] =_int_na_calloc= uses raw =req= in =memset= without checking alloc size  :bug:
+    :PROPERTIES:
+    :EFFORT: 30m
+    :END:
+    =_int_na_alloc= aligns the request up. =memset(addr, 0, req)= zeroes only
+    the unaligned =req= bytes; the extra alignment padding is left uninitialised.
+    Should zero the full aligned size or at minimum document the behaviour.
+
+    - [ ] Zero using the aligned size or the chunk's true data size
+
+*** TODO [#B] Freed pointer printed as address of local variable, not the chunk  :bug:
+    :PROPERTIES:
+    :EFFORT: 15m
+    :END:
+    In =_int_na_free= (debug block):
+    #+BEGIN_SRC c
+    fprintf(stderr, "[nanoalloc] chunk at: %p freed\n", &candidate);
+    #+END_SRC
+    =&candidate= is the address of the *stack variable*, not the chunk.
+    Should be =candidate= or =(void *)candidate=.
+
+    - [ ] Fix format argument to =(void *)candidate=
+
+** Security
+:PROPERTIES:
+:CATEGORY: Security
+:END:
+
+*** TODO [#A] No integer-overflow guard in =_int_na_calloc=           :security:
+    :PROPERTIES:
+    :EFFORT: 30m
+    :END:
+    =req = nmemb * size= can silently wrap on 32-bit or with large values.
+    glibc uses =__builtin_mul_overflow= / explicit check.
+
+    - [ ] Add overflow check: ~if (nmemb && size > SIZE_MAX / nmemb) return NULL~
+
+*** TODO [#B] Heap metadata (magic, pointers) exposed contiguously with user data  :security:
+    :PROPERTIES:
+    :EFFORT: 3h
+    :END:
+    A one-byte overwrite past the allocation boundary corrupts the magic field
+    or linked-list pointers of the next chunk. Consider guard pages or
+    canaries between header and user data.
+
+    - [ ] Evaluate adding a per-chunk trailing canary word
+    - [ ] Verify canary on free
+
+** Performance
+:PROPERTIES:
+:CATEGORY: Performance
+:END:
+
+*** TODO [#B] Implement per-thread cache (tcache) to reduce mutex contention  :perf:
+    :PROPERTIES:
+    :EFFORT: 2d
+    :END:
+    The current design serialises every alloc/free through a single global
+    mutex. A tcache (commented =@todo= already in source) would allow
+    common-size allocations to bypass locking entirely.
+
+    - [ ] Design size-class bins (e.g., 8-byte steps up to 512 B)
+    - [ ] Implement =pthread_key_t= based per-thread bin array
+    - [ ] Fall back to global list on cache miss or cache full
+
+*** TODO [#C] First-fit traversal is O(n) – consider segregated free lists  :perf:
+    :PROPERTIES:
+    :EFFORT: 3d
+    :END:
+    =free_list_traverse= walks the entire list linearly. A set of size-class
+    free lists (like dlmalloc bins) would give ~O(1) lookup for common sizes.
+
+    - [ ] Define bin boundaries
+    - [ ] Maintain per-bin doubly-linked lists
+    - [ ] Update alloc and free paths
+
+*** TODO [#C] Re-enable kernel return (~munmap~) for large freed chunks       :perf:
+    :PROPERTIES:
+    :EFFORT: 2h
+    :END:
+    The =_na_return_to_kernel= path is commented out as "not stable". Root-cause
+    the instability (likely list-pointer corruption after unmap) and re-enable
+    for chunks above a configurable threshold.
+
+    - [ ] Identify why the removed chunk's neighbours still reference it
+    - [ ] Remove the chunk from the list *before* munmapping
+    - [ ] Add threshold config to =na_alloc_config.h=
+
+** Features
+:PROPERTIES:
+:CATEGORY: Feature
+:END:
+
+*** TODO [#B] Chunk splitting – return excess memory to free list on alloc    :feature:
+    :PROPERTIES:
+    :EFFORT: 1d
+    :END:
+    When a free chunk is larger than the requested size, the surplus is wasted.
+    Implement splitting: carve a new free chunk from the remainder and insert
+    it back.
+
+    - [ ] Define minimum split size (e.g., =sizeof(na_chunk) + MIN_ALLOC=)
+    - [ ] Implement =_na_split_chunk= helper
+    - [ ] Call after =free_list_traverse= returns a match
+
+*** TODO [#B] Add =na_malloc_usable_size= (like =malloc_usable_size=)        :feature:
+    :PROPERTIES:
+    :EFFORT: 2h
+    :END:
+    Expose the true allocated size for a given pointer. Useful for callers
+    that want to use the full chunk without reallocating.
+
+*** TODO [#C] =posix_memalign= / =aligned_alloc= support                     :feature:
+    :PROPERTIES:
+    :EFFORT: 1d
+    :END:
+    Currently only the global =NA_DEFAULT_ALIGN_SIZE= is respected. Some
+    callers (SIMD, DMA) need stricter alignment guarantees.
+
+    - [ ] Add =na_aligned_alloc(size_t align, size_t size)=
+    - [ ] Override =posix_memalign= and =aligned_alloc= for LD_PRELOAD
+
+** Cleanup / Refactoring
+:PROPERTIES:
+:CATEGORY: Cleanup
+:END:
+
+*** TODO [#C] Remove commented-out =chunk_prev_size= field or implement it   :cleanup:
+    :PROPERTIES:
+    :EFFORT: 1h
+    :END:
+    =chunk_prev_size= appears in commented code in multiple places. Either
+    remove the dead comments or implement the field for O(1) prev-chunk
+    lookup (eliminating the need to walk =bc= for coalescing).
+
+*** TODO [#C] Replace magic literal =0xDEADC0DEDEADC0DEULL= with named constant in header :cleanup:
+    :PROPERTIES:
+    :EFFORT: 15m
+    :END:
+    Magic is already defined as =NA_CHUNK_MAGIC= – the raw literal should not
+    appear anywhere else. Audit all uses.
+
+*** TODO [#C] Validate =NA_SECURE_SENTINEL= fires on sentinel access in release builds :cleanup:
+    :PROPERTIES:
+    :EFFORT: 30m
+    :END:
+    =NA_SECURE_SENTINEL= uses =assert=, which is compiled out with =-DNDEBUG=.
+    Use an unconditional check or abort for release safety.
+
+** Documentation
+:PROPERTIES:
+:CATEGORY: Docs
+:END:
+
+*** TODO [#C] Document thread-safety guarantees in public header             :docs:
+    :PROPERTIES:
+    :EFFORT: 1h
+    :END:
+    =nanoalloc.h= has no mention of locking behaviour. Add a section explaining
+    the global mutex, its limitations, and the planned tcache roadmap.
+
+*** TODO [#C] Add README with architecture overview, build instructions, and LD_PRELOAD usage :docs:
+    :PROPERTIES:
+    :EFFORT: 2h
+    :END:
+    - [ ] Architecture diagram (chunk layout, free list, sentinel)
+    - [ ] Build: =make=, flags (=NA_DEBUG=, =NA_PREFIX=)
+    - [ ] Usage: =LD_PRELOAD=./libnanoalloc.so ./myapp=
+
+** Testing
+:PROPERTIES:
+:CATEGORY: Testing
+:END:
+
+*** TODO [#B] Add stress test: concurrent alloc/free from N threads          :feature:
+    :PROPERTIES:
+    :EFFORT: 1d
+    :END:
+    Validate mutex correctness and detect races with ThreadSanitizer.
+
+*** TODO [#B] Add fuzz target (libFuzzer) for =malloc= / =free= / =realloc= sequence :feature:
+    :PROPERTIES:
+    :EFFORT: 1d
+    :END:
+    Randomise sizes and free orderings to surface corruption bugs.
+
+*** TODO [#C] Add valgrind / AddressSanitizer CI run                         :feature:
+    :PROPERTIES:
+    :EFFORT: 2h
+    :END:
+
+* Changelog
+** [2026-03-27] Initial backlog created from code review of =nanoalloc.c=

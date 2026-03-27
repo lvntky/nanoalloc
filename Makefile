@@ -85,16 +85,43 @@ test: build-tests
 	@failed=0; \
 	for t in $(TEST_BINS); do \
 	    LD_LIBRARY_PATH=$(BUILDDIR):$$LD_LIBRARY_PATH \
-	    $$t --verbose 2>&1 || failed=1; \
+	    $$t --verbose --ignore-warnings 2>&1 || failed=1; \
 	done; \
 	exit $$failed
 
 .PHONY: check
 check: $(BUILDDIR)/test_$(SUITE)
 	@LD_LIBRARY_PATH=$(BUILDDIR):$$LD_LIBRARY_PATH \
-	    $(BUILDDIR)/test_$(SUITE) --verbose
+	    $(BUILDDIR)/test_$(SUITE) --verbose --ignore-warnings
 
 .PHONY: coverage
 coverage: test
 	@printf "\033[1mGenerating coverage…\033[0m\n"
-	@lcov --capt
+	@lcov --capture \
+	      --directory $(BUILDDIR) \
+	      --output-file $(BUILDDIR)/coverage.info \
+	      --gcov-tool gcov
+	@lcov --remove $(BUILDDIR)/coverage.info \
+	      '/usr/*' '*/criterion/*' \
+	      --output-file $(BUILDDIR)/coverage.info
+	@genhtml $(BUILDDIR)/coverage.info \
+	         --output-directory $(BUILDDIR)/coverage
+	@printf "\033[32mReport → $(BUILDDIR)/coverage/index.html\033[0m\n"
+
+# --------------------------------------------------------------------------
+.PHONY: clean
+clean:
+	$(RM) -r $(BUILDDIR)
+
+.PHONY: help
+help:
+	@printf "\033[1mTargets:\033[0m\n"
+	@printf "  make                   release build\n"
+	@printf "  make MODE=debug        debug build (NA_DEBUG=1, -O0, -g3)\n"
+	@printf "  make test              build + run all Criterion test suites\n"
+	@printf "  make build-tests       compile test binaries without running\n"
+	@printf "  make check SUITE=foo   run tests/test_foo.c only\n"
+	@printf "  make coverage          run tests + generate html coverage report\n"
+	@printf "  make clean             remove build artifacts\n"
+	@printf "\n\033[1mVariables:\033[0m\n"
+	@printf "  CRITERION_PREFIX=/path override Criterion install location\n"

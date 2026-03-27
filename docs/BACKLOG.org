@@ -12,7 +12,7 @@
 :CATEGORY: Bug
 :END:
 
-*** TODO [#A] Coalesce does not strip in-use bit before adding sizes  :bug:
+*** DONE [#A] Coalesce does not strip in-use bit before adding sizes    :bug:
     :PROPERTIES:
     :EFFORT: 1h
     :END:
@@ -26,7 +26,7 @@
     - [ ] Fix merge-with-prev accumulation
     - [ ] Add unit test for size integrity after double coalesce
 
-*** TODO [#A] Double-free not detected – magic byte is preserved after free  :bug:security:
+*** DONE [#A] Double-free not detected – magic byte is preserved after free :bug:security:
     :PROPERTIES:
     :EFFORT: 2h
     :END:
@@ -239,5 +239,7 @@
     :EFFORT: 2h
     :END:
 
-* Changelog
+*
+ Changelog
+
 ** [2026-03-27] Initial backlog created from code review of =nanoalloc.c=

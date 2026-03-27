@@ -34,6 +34,7 @@ static na_chunk *free_list_traverse(size_t __size);
 	} while (0);
 
 #define NA_CHUNK_MAGIC 0xDEADC0DEDEADC0DEULL
+#define NA_CHUNK_FREED_MAGIC 0XF733DC0DEF733DC0ULL
 
 /**
  * A global mutex to rule them all
@@ -281,11 +282,13 @@ void _int_na_free(void *ptr)
 	if (candidate->magic != NA_CHUNK_MAGIC) {
 #if NA_DEBUG
 		fprintf(stderr,
-			"[nanoalloc] free: foreign or corrupt ptr %p, ignoring\n",
-			ptr);
+			"[nanoalloc] free: foreign/corrputed or already freed pointer: %p. magic: %ull, ignoring\n",
+				ptr, candidate->magic);
 #endif
 		return;
 	}
+
+	candidate->magic = NA_CHUNK_FREED_MAGIC;
 
 	NA_SECURE_SENTINEL(candidate);
 

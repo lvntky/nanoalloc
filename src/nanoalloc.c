@@ -241,7 +241,8 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 
 	// Merge with next chunk if free
 	if (next != nachunkptr && NA_IS_CHUNK_FREE(next)) {
-		candidate->size += NA_CHUNK_TRUE_SIZE(next);
+		size_t candidate_true_size = NA_CHUNK_TRUE_SIZE(candidate);
+		candidate_true_size += NA_CHUNK_TRUE_SIZE(next);
 		candidate->fc = next->fc;
 		next->fc->bc = candidate;
 	}
@@ -249,7 +250,8 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 	// Merge with previous chunk if free
 	na_chunk *prev = candidate->bc;
 	if (prev != nachunkptr && NA_IS_CHUNK_FREE(prev)) {
-		prev->size += NA_CHUNK_TRUE_SIZE(candidate);
+		size_t prev_true_size = NA_CHUNK_TRUE_SIZE(prev);
+		prev_true_size += NA_CHUNK_TRUE_SIZE(candidate);
 		prev->fc = candidate->fc;
 		candidate->fc->bc = prev;
 		candidate = prev;

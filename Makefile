@@ -100,7 +100,8 @@ coverage: test
 	@lcov --capture \
 	      --directory $(BUILDDIR) \
 	      --output-file $(BUILDDIR)/coverage.info \
-	      --gcov-tool gcov
+	      --gcov-tool /usr/bin/llvm-gcov \
+	      --ignore-errors version
 	@lcov --remove $(BUILDDIR)/coverage.info \
 	      '/usr/*' '*/criterion/*' \
 	      --output-file $(BUILDDIR)/coverage.info

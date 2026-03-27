@@ -1,22 +1,13 @@
-name: CI
-
-on:
-  push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
+- name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libcriterion-dev lcov llvm
+
+      - name: Create llvm-cov wrapper
+        run: |
+          echo '#!/bin/bash' | sudo tee /usr/local/bin/llvm-gcov
+          echo 'exec llvm-cov gcov "$@"' | sudo tee -a /usr/local/bin/llvm-gcov
+          sudo chmod +x /usr/local/bin/llvm-gcov
 
       - name: Build
         run: make

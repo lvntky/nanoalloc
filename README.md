@@ -1,5 +1,7 @@
 # nanoalloc
 
+[![CI](https://github.com/lvntky/nanoalloc/actions/workflows/ci.yml/badge.svg)](https://github.com/lvntky/nanoalloc/actions/workflows/ci.yml)
+
 nanoalloc __(or na_alloc)__ is a general purpose dynamic memory allocator. Basically a poor re-inventation of wheel that ultimately goals to work in production (even if it's slow).
 
 Nanoalloc's primary goal isn't speed or offering a groundbreaking perspective. Its sole purpose is to function. While no performance promises are made, its main requirement is acceptable performance in commonly used modern programs like Python, curl, and Vim.

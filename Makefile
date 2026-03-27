@@ -64,7 +64,8 @@ $(LIB_HOOK): $(HOOK_SRC) $(LIB_NANO) | $(BUILDDIR)
 # --------------------------------------------------------------------------
 
 TEST_CFLAGS := $(filter-out -O2 -DNA_DEBUG=0 -D_FORTIFY_SOURCE=2, $(CFLAGS)) \
-               -O0 -g3 -DNA_DEBUG=1
+               -O0 -g3 -DNA_DEBUG=1 \
+               --coverage
 
 $(BUILDDIR)/test_%: $(TESTDIR)/test_%.c $(LIB_NANO) | $(BUILDDIR)
 	$(CC) $(TEST_CFLAGS) \
@@ -93,6 +94,20 @@ check: $(BUILDDIR)/test_$(SUITE)
 	@LD_LIBRARY_PATH=$(BUILDDIR):$$LD_LIBRARY_PATH \
 	    $(BUILDDIR)/test_$(SUITE) --verbose
 
+.PHONY: coverage
+coverage: test
+	@printf "\033[1mGenerating coverage…\033[0m\n"
+	@lcov --capture \
+	      --directory $(BUILDDIR) \
+	      --output-file $(BUILDDIR)/coverage.info \
+	      --gcov-tool gcov
+	@lcov --remove $(BUILDDIR)/coverage.info \
+	      '/usr/*' '*/criterion/*' \
+	      --output-file $(BUILDDIR)/coverage.info
+	@genhtml $(BUILDDIR)/coverage.info \
+	         --output-directory $(BUILDDIR)/coverage
+	@printf "\033[32mReport → $(BUILDDIR)/coverage/index.html\033[0m\n"
+
 # --------------------------------------------------------------------------
 .PHONY: clean
 clean:
@@ -106,6 +121,7 @@ help:
 	@printf "  make test              build + run all Criterion test suites\n"
 	@printf "  make build-tests       compile test binaries without running\n"
 	@printf "  make check SUITE=foo   run tests/test_foo.c only\n"
+	@printf "  make coverage          run tests + generate html coverage report\n"
 	@printf "  make clean             remove build artifacts\n"
 	@printf "\n\033[1mVariables:\033[0m\n"
 	@printf "  CRITERION_PREFIX=/path override Criterion install location\n"

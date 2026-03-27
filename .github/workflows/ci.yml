@@ -16,16 +16,20 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcriterion-dev lcov
+          sudo apt-get install -y libcriterion-dev lcov llvm
 
       - name: Build
         run: make
 
       - name: Run tests
         run: make test
+        env:
+          LD_LIBRARY_PATH: build
 
       - name: Generate coverage
         run: make coverage
+        env:
+          LD_LIBRARY_PATH: build
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4

@@ -283,7 +283,7 @@ void _int_na_free(void *ptr)
 #if NA_DEBUG
 		fprintf(stderr,
 			"[nanoalloc] free: foreign/corrputed or already freed pointer: %p. magic: %ull, ignoring\n",
-				ptr, candidate->magic);
+			ptr, candidate->magic);
 #endif
 		return;
 	}
@@ -372,11 +372,21 @@ static void *_int_na_calloc(size_t nmemb, size_t size)
 	size_t req = 0;
 	if (nmemb != 0) {
 		req = nmemb * size;
+#if NA_DEBUG
+		fprintf(stderr, "calloc req size_t: %ld", req);
+#endif
 		/** @todo over owerflow check may be needed */
 	}
 	addr = _int_na_alloc(req);
-	if (addr != 0)
-		memset(addr, 0, req);
+	if (addr != 0) {
+		size_t aligned_req = _NA_ALIGNG(req, NA_DEFAULT_ALIGN_SIZE);
+#if NA_DEBUG
+		fprintf(stderr, "calloc aligned req size_t: %ld", aligned_req);
+
+#endif		
+		memset(addr, 0, req);		
+	}
+
 
 	return addr;
 }

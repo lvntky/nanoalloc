@@ -26,7 +26,7 @@ tests/*.out
 *~
 TAGS
 na_debug.log
-
+driver/
 # OS
 .DS_Store
 Thumbs.db

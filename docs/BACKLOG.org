@@ -22,9 +22,9 @@
     off-by-one. Both additions in the function must use =NA_CHUNK_TRUE_SIZE=
     on the *destination* chunk as well.
 
-    - [x] Fix merge-with-next accumulation
-    - [x] Fix merge-with-prev accumulation
-    - [ ] Add unit test for size integrity after double coalesce
+    - [X] Fix merge-with-next accumulation
+    - [X] Fix merge-with-prev accumulation
+    - [X] Add unit test for size integrity after double coalesce
 
 *** DONE [#A] Double-free not detected – magic byte is preserved after free :bug:security:
     :PROPERTIES:
@@ -34,9 +34,9 @@
     it. A second call with the same pointer passes the guard silently and marks
     an already-free chunk as freed again, potentially corrupting the list.
 
-    - [ ] Clear magic field (set to 0 or a ~DEAD_MAGIC~) inside =_int_na_free=
+    - [X] Clear magic field (set to 0 or a ~DEAD_MAGIC~) inside =_int_na_free=
           after the validity check
-    - [ ] Add a ~NA_CHUNK_FREE_MAGIC~ sentinel to distinguish freed vs live
+    - [X] Add a ~NA_CHUNK_FREE_MAGIC~ sentinel to distinguish freed vs live
 
 *** DONE [#B] =_int_na_realloc= compares =size= against raw =cnd_size= before alignment :bug:
     :PROPERTIES:
@@ -46,9 +46,9 @@
     aligned, so a request that rounds up to the same bucket is spuriously
     rejected and a new allocation is done unnecessarily.
 
-    - [x] Align =size= with =_NA_ALIGNG= before the equality check
+    - [X] Align =size= with =_NA_ALIGNG= before the equality check
 
-*** TODO [#B] =_int_na_calloc= uses raw =req= in =memset= without checking alloc size  :bug:
+*** DONE [#B] =_int_na_calloc= uses raw =req= in =memset= without checking alloc size :bug:
     :PROPERTIES:
     :EFFORT: 30m
     :END:
@@ -56,7 +56,7 @@
     the unaligned =req= bytes; the extra alignment padding is left uninitialised.
     Should zero the full aligned size or at minimum document the behaviour.
 
-    - [ ] Zero using the aligned size or the chunk's true data size
+    - [X] Zero using the aligned size or the chunk's true data size
 
 *** DONE [#B] Freed pointer printed as address of local variable, not the chunk :bug:
     :PROPERTIES:
@@ -69,7 +69,7 @@
     =&candidate= is the address of the *stack variable*, not the chunk.
     Should be =candidate= or =(void *)candidate=.
 
-    - [x] Fix format argument to =(void *)candidate=
+    - [X] Fix format argument to =(void *)candidate=
       
 ** Security
 :PROPERTIES:

@@ -242,8 +242,8 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 
 	// Merge with next chunk if free
 	if (next != nachunkptr && NA_IS_CHUNK_FREE(next)) {
-		size_t candidate_true_size = NA_CHUNK_TRUE_SIZE(candidate);
-		candidate_true_size += NA_CHUNK_TRUE_SIZE(next);
+		candidate->size = NA_CHUNK_TRUE_SIZE(candidate) +
+				  NA_CHUNK_TRUE_SIZE(next);
 		candidate->fc = next->fc;
 		next->fc->bc = candidate;
 	}
@@ -251,8 +251,7 @@ static na_chunk *_na_coalesce(na_chunk *candidate)
 	// Merge with previous chunk if free
 	na_chunk *prev = candidate->bc;
 	if (prev != nachunkptr && NA_IS_CHUNK_FREE(prev)) {
-		size_t prev_true_size = NA_CHUNK_TRUE_SIZE(prev);
-		prev_true_size += NA_CHUNK_TRUE_SIZE(candidate);
+		prev->size = NA_CHUNK_TRUE_SIZE(prev) + NA_CHUNK_TRUE_SIZE(candidate);
 		prev->fc = candidate->fc;
 		candidate->fc->bc = prev;
 		candidate = prev;
@@ -383,10 +382,9 @@ static void *_int_na_calloc(size_t nmemb, size_t size)
 #if NA_DEBUG
 		fprintf(stderr, "calloc aligned req size_t: %ld", aligned_req);
 
-#endif		
-		memset(addr, 0, req);		
+#endif
+		memset(addr, 0, req);
 	}
-
 
 	return addr;
 }

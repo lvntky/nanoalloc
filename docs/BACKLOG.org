@@ -22,8 +22,8 @@
     off-by-one. Both additions in the function must use =NA_CHUNK_TRUE_SIZE=
     on the *destination* chunk as well.
 
-    - [ ] Fix merge-with-next accumulation
-    - [ ] Fix merge-with-prev accumulation
+    - [x] Fix merge-with-next accumulation
+    - [x] Fix merge-with-prev accumulation
     - [ ] Add unit test for size integrity after double coalesce
 
 *** DONE [#A] Double-free not detected – magic byte is preserved after free :bug:security:
@@ -38,7 +38,7 @@
           after the validity check
     - [ ] Add a ~NA_CHUNK_FREE_MAGIC~ sentinel to distinguish freed vs live
 
-*** TODO [#B] =_int_na_realloc= compares =size= against raw =cnd_size= before alignment  :bug:
+*** DONE [#B] =_int_na_realloc= compares =size= against raw =cnd_size= before alignment :bug:
     :PROPERTIES:
     :EFFORT: 30m
     :END:
@@ -46,7 +46,7 @@
     aligned, so a request that rounds up to the same bucket is spuriously
     rejected and a new allocation is done unnecessarily.
 
-    - [ ] Align =size= with =_NA_ALIGNG= before the equality check
+    - [x] Align =size= with =_NA_ALIGNG= before the equality check
 
 *** TODO [#B] =_int_na_calloc= uses raw =req= in =memset= without checking alloc size  :bug:
     :PROPERTIES:
@@ -58,7 +58,7 @@
 
     - [ ] Zero using the aligned size or the chunk's true data size
 
-*** TODO [#B] Freed pointer printed as address of local variable, not the chunk  :bug:
+*** DONE [#B] Freed pointer printed as address of local variable, not the chunk :bug:
     :PROPERTIES:
     :EFFORT: 15m
     :END:
@@ -69,8 +69,8 @@
     =&candidate= is the address of the *stack variable*, not the chunk.
     Should be =candidate= or =(void *)candidate=.
 
-    - [ ] Fix format argument to =(void *)candidate=
-
+    - [x] Fix format argument to =(void *)candidate=
+      
 ** Security
 :PROPERTIES:
 :CATEGORY: Security

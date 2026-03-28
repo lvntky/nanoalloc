@@ -298,7 +298,7 @@ void _int_na_free(void *ptr)
 	NA_MARK_FREED(candidate);
 
 #if NA_DEBUG
-	fprintf(stderr, "[nanoalloc] chunk at: %p freed\n", &candidate);
+	fprintf(stderr, "[nanoalloc] chunk at: %p freed\n", (void *)candidate);
 #endif
 	// coalesce
 	candidate = _na_coalesce(candidate);
@@ -345,7 +345,7 @@ static void *_int_na_realloc(void *ptr, size_t size)
 	size_t cnd_size =
 		NA_CHUNK_TRUE_SIZE(candidate); // fix: strip in-use bit
 
-	if (size == cnd_size)
+	if (_NA_ALIGNG(cnd_size, NA_DEFAULT_ALIGN_SIZE) == cnd_size)
 		return ptr;
 
 	na_chunk copy = na_copy_stack(candidate); // snapshot before free

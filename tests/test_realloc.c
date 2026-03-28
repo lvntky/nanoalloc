@@ -6,5 +6,5 @@
 Test(realloc, big_input) {
 
 	int *p = malloc(5 * sizeof(int));
-	realloc(p, 1234123412341);
+	realloc(p, 1234);
 }
